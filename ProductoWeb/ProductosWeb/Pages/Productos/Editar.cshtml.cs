@@ -1,5 +1,6 @@
 using Abstracciones.Modelos;
 using Abstracciones.Reglas;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -8,6 +9,7 @@ using System.Text.Json;
 
 namespace ProductosWeb.Pages.Productos
 {
+    [Authorize(Roles = "2")]
     public class EditarModel : PageModel
     {
         private readonly IConfiguracion _configuracion;
@@ -37,7 +39,7 @@ namespace ProductosWeb.Pages.Productos
                 return NotFound();
 
             string endpoint = _configuracion.ObtenerMetodo("ApiEndPoints", "ObtenerProducto");
-            var cliente = new HttpClient();
+            var cliente = ObtenerClienteConToken();
             var solicitud = new HttpRequestMessage(HttpMethod.Get, string.Format(endpoint, id));
 
             var respuesta = await cliente.SendAsync(solicitud);
@@ -77,7 +79,7 @@ namespace ProductosWeb.Pages.Productos
                 return Page();
 
             string endpoint = _configuracion.ObtenerMetodo("ApiEndPoints", "EditarProducto");
-            var cliente = new HttpClient();
+            var cliente = ObtenerClienteConToken();
 
             var respuesta = await cliente.PutAsJsonAsync<ProductoRequest>(string.Format(endpoint, productoResponse.Id),
                 new ProductoRequest
@@ -105,7 +107,7 @@ namespace ProductosWeb.Pages.Productos
         {
 
             string endpoint = _configuracion.ObtenerMetodo("ApiEndPoints", "ObtenerCategoria");
-            var cliente = new HttpClient();
+            var cliente = ObtenerClienteConToken();
             var solicitud = new HttpRequestMessage(HttpMethod.Get, endpoint);
 
             var respuesta = await cliente.SendAsync(solicitud);
@@ -134,7 +136,7 @@ namespace ProductosWeb.Pages.Productos
         {
 
             string endpoint = _configuracion.ObtenerMetodo("ApiEndPoints", "ObtenerSubcategoria");
-            var cliente = new HttpClient();
+            var cliente = ObtenerClienteConToken();
             var solicitud = new HttpRequestMessage(HttpMethod.Get, string.Format(endpoint, categoriaId));
 
             var respuesta = await cliente.SendAsync(solicitud);
@@ -156,6 +158,17 @@ namespace ProductosWeb.Pages.Productos
 
             var modelos = await ObtenerSubcategoria(categoriaId);
             return new JsonResult(modelos);
+        }
+        private HttpClient ObtenerClienteConToken()
+        {
+            var tokenClaim = HttpContext.User.Claims
+                .FirstOrDefault(c => c.Type == "Token");
+            var cliente = new HttpClient();
+            if (tokenClaim != null)
+                cliente.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue(
+                        "Bearer", tokenClaim.Value);
+            return cliente;
         }
     }
 }

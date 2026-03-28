@@ -1,11 +1,13 @@
 using Abstracciones.Modelos;
 using Abstracciones.Reglas;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Text.Json;
 
 namespace ProductosWeb.Pages.Productos
 {
+    [Authorize(Roles = "1")]
     public class IndexModel : PageModel
     {
         private readonly IConfiguracion _configuracion;
@@ -19,7 +21,7 @@ namespace ProductosWeb.Pages.Productos
         public async Task OnGet()
         {
             string endpoint = _configuracion.ObtenerMetodo("ApiEndPoints", "ObtenerProductos");
-            var cliente = new HttpClient();
+            var cliente = ObtenerClienteConToken();
             var solicitud = new HttpRequestMessage(HttpMethod.Get, endpoint);
 
             var respuesta = await cliente.SendAsync(solicitud);
@@ -35,6 +37,18 @@ namespace ProductosWeb.Pages.Productos
             {
                 productos = new List<ProductoDetalle>();
             }
+        }
+
+        private HttpClient ObtenerClienteConToken()
+        {
+            var tokenClaim = HttpContext.User.Claims
+                .FirstOrDefault(c => c.Type == "Token");
+            var cliente = new HttpClient();
+            if (tokenClaim != null)
+                cliente.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue(
+                        "Bearer", tokenClaim.Value);
+            return cliente;
         }
 
     }
